@@ -885,4 +885,209 @@
                             <p><strong>From:</strong> ${booking.from}</p>
                             <p><strong>To:</strong> ${booking.to}</p>
                             <p><strong>Date:</strong> ${booking.date}</p>
-                 
+                        </div>
+                    </div>
+                    <div class="ticket-details">
+                        <div>
+                            <p><strong>Bus:</strong> ${booking.bus.name}</p>
+                            <p><strong>Departure:</strong> ${booking.bus.departure}</p>
+                            <p><strong>Arrival:</strong> ${booking.bus.arrival}</p>
+                        </div>
+                        <div>
+                            <p><strong>Seats:</strong> ${booking.seats.join(', ')}</p>
+                            <p><strong>Fare:</strong> $${booking.fare}</p>
+                            <p><strong>Booking Date:</strong> ${booking.bookingDate}</p>
+                        </div>
+                    </div>
+                    <div class="ticket-qr">
+                        <p>Scan this QR code at the bus</p>
+                        <div style="width:100px; height:100px; background-color:#f0f0f0; margin:0 auto; display:flex; align-items:center; justify-content:center;">
+                            QR Code
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Download ticket as PDF
+        function downloadTicket() {
+            const ticketElement = document.getElementById('ticket-display');
+            
+            html2canvas(ticketElement).then(canvas => {
+                const imgData = canvas.toDataURL('image/png');
+                const pdf = new jsPDF();
+                const imgProps = pdf.getImageProperties(imgData);
+                const pdfWidth = pdf.internal.pageSize.getWidth();
+                const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+                
+                pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+                pdf.save(`bus-ticket-${currentBooking.id}.pdf`);
+            });
+        }
+        
+        // Load user bookings
+        function loadUserBookings() {
+            const userBookingsContainer = document.getElementById('user-bookings');
+            userBookingsContainer.innerHTML = '';
+            
+            if (bookings.length === 0) {
+                userBookingsContainer.innerHTML = '<p>No bookings found.</p>';
+                return;
+            }
+            
+            bookings.forEach(booking => {
+                const bookingElement = document.createElement('div');
+                bookingElement.className = 'user-booking';
+                bookingElement.innerHTML = `
+                    <h4>Booking ID: ${booking.id}</h4>
+                    <p><strong>Route:</strong> ${booking.from} to ${booking.to}</p>
+                    <p><strong>Date:</strong> ${booking.date}</p>
+                    <p><strong>Seats:</strong> ${booking.seats.join(', ')}</p>
+                    <p><strong>Fare:</strong> $${booking.fare}</p>
+                    <p><strong>Status:</strong> <span class="status-badge status-${booking.status}">${booking.status}</span></p>
+                    <button onclick="viewTicket('${booking.id}')">View Ticket</button>
+                    <button onclick="downloadUserTicket('${booking.id}')">Download PDF</button>
+                    ${booking.status === 'confirmed' ? `<button class="btn-danger" onclick="cancelUserBooking('${booking.id}')">Cancel Booking</button>` : ''}
+                `;
+                userBookingsContainer.appendChild(bookingElement);
+            });
+        }
+        
+        // View ticket
+        function viewTicket(bookingId) {
+            const booking = bookings.find(b => b.id === bookingId);
+            if (booking) {
+                document.getElementById('my-bookings-section').classList.add('hidden');
+                document.getElementById('booking-confirmation').classList.remove('hidden');
+                displayTicket(booking);
+            }
+        }
+        
+        // Download user ticket
+        function downloadUserTicket(bookingId) {
+            const booking = bookings.find(b => b.id === bookingId);
+            if (booking) {
+                currentBooking = booking;
+                downloadTicket();
+            }
+        }
+        
+        // Cancel user booking
+        function cancelUserBooking(bookingId) {
+            if (confirm('Are you sure you want to cancel this booking?')) {
+                const bookingIndex = bookings.findIndex(b => b.id === bookingId);
+                if (bookingIndex !== -1) {
+                    bookings[bookingIndex].status = 'cancelled';
+                    localStorage.setItem('bookings', JSON.stringify(bookings));
+                    loadUserBookings();
+                    alert('Booking cancelled successfully');
+                }
+            }
+        }
+        
+        // Load admin bookings
+        function loadAdminBookings() {
+            const adminBookingsTable = document.getElementById('admin-bookings-table').querySelector('tbody');
+            adminBookingsTable.innerHTML = '';
+            
+            bookings.forEach(booking => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${booking.id}</td>
+                    <td>${booking.passenger.name}</td>
+                    <td>${booking.from} to ${booking.to}</td>
+                    <td>${booking.date}</td>
+                    <td>${booking.seats.join(', ')}</td>
+                    <td>$${booking.fare}</td>
+                    <td><span class="status-badge status-${booking.status}">${booking.status}</span></td>
+                    <td>
+                        <button onclick="viewBooking('${booking.id}')">View</button>
+                        <button class="btn-danger" onclick="cancelBooking('${booking.id}')">Cancel</button>
+                    </td>
+                `;
+                adminBookingsTable.appendChild(row);
+            });
+        }
+        
+        // Update admin stats
+        function updateAdminStats() {
+            const totalBookings = bookings.length;
+            const totalRevenue = bookings.reduce((sum, booking) => sum + (booking.status === 'confirmed' ? booking.fare : 0), 0);
+            const occupiedSeats = bookings.reduce((sum, booking) => sum + (booking.status === 'confirmed' ? booking.seats.length : 0), 0);
+            
+            document.getElementById('total-bookings').textContent = totalBookings;
+            document.getElementById('total-revenue').textContent = `$${totalRevenue}`;
+            document.getElementById('occupied-seats').textContent = occupiedSeats;
+        }
+        
+        // View booking in admin panel
+        function viewBooking(bookingId) {
+            const booking = bookings.find(b => b.id === bookingId);
+            if (booking) {
+                alert(`Booking Details:\nID: ${booking.id}\nPassenger: ${booking.passenger.name}\nEmail: ${booking.passenger.email}\nPhone: ${booking.passenger.phone}\nRoute: ${booking.from} to ${booking.to}\nDate: ${booking.date}\nSeats: ${booking.seats.join(', ')}\nFare: $${booking.fare}\nStatus: ${booking.status}`);
+            }
+        }
+        
+        // Cancel booking
+        function cancelBooking(bookingId) {
+            if (confirm('Are you sure you want to cancel this booking?')) {
+                const bookingIndex = bookings.findIndex(b => b.id === bookingId);
+                if (bookingIndex !== -1) {
+                    bookings[bookingIndex].status = 'cancelled';
+                    localStorage.setItem('bookings', JSON.stringify(bookings));
+                    loadAdminBookings();
+                    updateAdminStats();
+                    alert('Booking cancelled successfully');
+                }
+            }
+        }
+        
+        // Switch tabs in admin panel
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            document.getElementById(tabId).classList.add('active');
+            event.currentTarget.classList.add('active');
+        }
+        
+        // Add new bus (placeholder)
+        function addNewBus() {
+            alert('Add new bus functionality would be implemented here');
+        }
+        
+        // Add new route (placeholder)
+        function addNewRoute() {
+            alert('Add new route functionality would be implemented here');
+        }
+        
+        // Initialize the application
+        window.onload = function() {
+            // Set default date to tomorrow
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            document.getElementById('travel-date').valueAsDate = tomorrow;
+            
+            // Check if admin is logged in
+            const isAdminLoggedIn = localStorage.getItem('adminLoggedIn') === 'true';
+            if (isAdminLoggedIn) {
+                // If admin is logged in, show admin panel directly
+                document.getElementById('admin-login').classList.add('hidden');
+                document.getElementById('admin-panel').classList.remove('hidden');
+                loadAdminBookings();
+                updateAdminStats();
+            } else {
+                // Otherwise, show the booking section
+                document.getElementById('admin-login').classList.remove('hidden');
+                document.getElementById('booking-section').classList.remove('hidden');
+            }
+        };
+    </script>
+</body>
+</html>
+```
