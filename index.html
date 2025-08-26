@@ -1,170 +1,180 @@
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-app.js";
-  import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-auth.js";
-  import { getFirestore, collection, addDoc, getDocs, updateDoc, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-firestore.js";
+<script>
+  // ---------------------------
+  // Admin Security
+  // ---------------------------
+  let isAdminLoggedIn = false;
 
-  // 🔧 PASTE YOUR EXACT CONFIG HERE (from Firebase Console → Project settings → Web app → CDN)
-  const firebaseConfig = {
-    apiKey: "PASTE_YOUR_REAL_API_KEY_HERE",
-    authDomain: "your-project-id.firebaseapp.com",
-    projectId: "your-project-id",
-    storageBucket: "your-project-id.appspot.com",
-    messagingSenderId: "XXXXXXXXXXXX",
-    appId: "1:XXXXXXXXXXXX:web:YYYYYYYYYYYYYYYY"
-  };
-
-  // Basic sanity checks to catch typos early
-  function validateConfig(cfg) {
-    const problems = [];
-    if (!cfg.apiKey || cfg.apiKey.length < 30) problems.push("apiKey looks wrong/empty");
-    if (!cfg.authDomain || !cfg.authDomain.includes("firebaseapp.com")) problems.push("authDomain looks wrong");
-    if (!cfg.projectId) problems.push("projectId missing");
-    if (!cfg.appId || !cfg.appId.includes(":")) problems.push("appId looks wrong");
-    return problems;
-  }
-
-  const issues = validateConfig(firebaseConfig);
-  if (issues.length) {
-    console.warn("⚠️ Firebase config issues:", issues.join(", "));
-  }
-
-  // Init
-  const app = initializeApp(firebaseConfig);
-  const auth = getAuth(app);
-  const db = getFirestore(app);
-
-  // Show/hide admin UI on auth state
-  const adminPanel = document.getElementById("admin-panel");
-  const adminLogin = document.getElementById("admin-login");
-  onAuthStateChanged(auth, (user) => {
-    if (user) {
-      adminLogin?.classList.add("hidden");
-      adminPanel?.classList.remove("hidden");
-      // Optionally load your data here:
-      if (window.loadBuses) window.loadBuses();
-      if (window.loadRoutes) window.loadRoutes();
+  function showAdminPanel() {
+    if (isAdminLoggedIn) {
+      document.getElementById("booking-section").classList.add("hidden");
+      document.getElementById("my-bookings-section").classList.add("hidden");
+      document.getElementById("admin-panel").classList.remove("hidden");
+      document.getElementById("admin-login").classList.add("hidden");
+      loadAdminBookings();
+      updateAdminStats();
+      loadBuses();
+      loadRoutes();
     } else {
-      adminPanel?.classList.add("hidden");
-      adminLogin?.classList.remove("hidden");
+      document.getElementById("booking-section").classList.add("hidden");
+      document.getElementById("my-bookings-section").classList.add("hidden");
+      document.getElementById("admin-panel").classList.add("hidden");
+      document.getElementById("admin-login").classList.remove("hidden");
     }
-  });
+  }
 
-  // Replace your old adminLogin() with a secure version
-  window.adminLogin = async function () {
-    const email = document.getElementById("admin-username")?.value?.trim();
-    const pass  = document.getElementById("admin-password")?.value;
-    if (!email || !pass) return alert("Enter Email and Password");
-
-    try {
-      await signInWithEmailAndPassword(auth, email, pass);
-      // Success → onAuthStateChanged will switch the UI
-    } catch (e) {
-      // Helpful guidance for common cases
-      const msg = (e && e.code) ? e.code : (e && e.message) ? e.message : String(e);
-      if (String(msg).includes("api-key-not-valid")) {
-        alert("Login failed: Invalid API key.\n\nFix:\n1) Paste the correct firebaseConfig from Firebase Console.\n2) If your API key is restricted, allow Identity Toolkit API and your domain.\n3) Ensure authDomain/projectId match your project.");
-      } else if (String(msg).includes("auth/user-not-found")) {
-        alert("User not found. Create the admin user in Firebase Console → Authentication → Users.");
-      } else if (String(msg).includes("auth/invalid-email")) {
-        alert("Invalid email format.");
-      } else if (String(msg).includes("auth/wrong-password")) {
-        alert("Wrong password.");
-      } else {
-        alert("Login failed: " + msg);
-      }
-      console.error(e);
+  function adminLogin() {
+    const username = document.getElementById("admin-username").value.trim();
+    const password = document.getElementById("admin-password").value.trim();
+    if (username === "admin" && password === "admin123") {
+      isAdminLoggedIn = true;
+      localStorage.setItem("adminLoggedIn", "true");
+      showAdminPanel();
+    } else {
+      alert("Invalid admin credentials");
     }
-  };
+  }
 
-  // Optional: add a logout hook (if you have a button calling logoutAdmin())
-  window.logoutAdmin = async function () {
-    await signOut(auth);
-  };
+  // ---------------------------
+  // Data storage
+  // ---------------------------
+  let bookings = JSON.parse(localStorage.getItem("bookings")) || [];
+  let busesData = JSON.parse(localStorage.getItem("busesData")) || [
+    { id: "BUS001", name: "Express Bus 1", capacity: 40, type: "AC" },
+    { id: "BUS002", name: "Luxury Bus 2", capacity: 35, type: "Non-AC" }
+  ];
+  let routesData = JSON.parse(localStorage.getItem("routesData")) || [
+    { id: "RT001", from: "New York", to: "Boston", distance: "215 miles", duration: "4 hours" },
+    { id: "RT002", from: "Los Angeles", to: "San Francisco", distance: "380 miles", duration: "6 hours" }
+  ];
 
-  // Example CRUD (only if you already wired Buses/Routes UI):
-  window.loadBuses = async function () {
-    const snap = await getDocs(collection(db, "buses"));
-    const tbody = document.querySelector("#buses-tab table tbody, #buses-table");
-    if (!tbody) return;
+  // ---------------------------
+  // Manage Buses
+  // ---------------------------
+  function loadBuses() {
+    const tbody = document.querySelector("#buses-tab table tbody");
     tbody.innerHTML = "";
-    snap.forEach(d => {
-      const b = d.data();
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td>${d.id}</td>
-        <td>${b.name || ""}</td>
-        <td>${b.capacity || ""}</td>
-        <td>${b.type || ""}</td>
-        <td>
-          <button onclick="editBus('${d.id}')">Edit</button>
-          <button onclick="deleteBus('${d.id}')">Delete</button>
-        </td>`;
-      tbody.appendChild(tr);
+    busesData.forEach(bus => {
+      tbody.innerHTML += `
+        <tr>
+          <td>${bus.id}</td>
+          <td>${bus.name}</td>
+          <td>${bus.capacity}</td>
+          <td>${bus.type}</td>
+          <td>
+            <button onclick="editBus('${bus.id}')" class="btn-secondary">Edit</button>
+            <button onclick="deleteBus('${bus.id}')" class="btn-danger">Delete</button>
+          </td>
+        </tr>`;
     });
-  };
+  }
 
-  window.addNewBus = async function () {
-    const name = prompt("Bus name?");
-    const capacity = prompt("Capacity?");
-    const type = prompt("Type (AC/Non-AC)?");
-    if (!name) return;
-    await addDoc(collection(db, "buses"), { name, capacity, type });
-    window.loadBuses();
-  };
+  function addNewBus() {
+    const id = "BUS" + String(Date.now()).slice(-4);
+    const name = prompt("Enter bus name:");
+    const capacity = prompt("Enter bus capacity:");
+    const type = prompt("Enter bus type (AC/Non-AC):");
+    if (name && capacity && type) {
+      busesData.push({ id, name, capacity, type });
+      localStorage.setItem("busesData", JSON.stringify(busesData));
+      loadBuses();
+    }
+  }
 
-  window.editBus = async function (id) {
-    const name = prompt("New name?");
-    if (!name) return;
-    await updateDoc(doc(db, "buses", id), { name });
-    window.loadBuses();
-  };
+  function editBus(id) {
+    const bus = busesData.find(b => b.id === id);
+    if (!bus) return;
+    const name = prompt("Edit bus name:", bus.name);
+    const capacity = prompt("Edit capacity:", bus.capacity);
+    const type = prompt("Edit type:", bus.type);
+    if (name && capacity && type) {
+      bus.name = name;
+      bus.capacity = capacity;
+      bus.type = type;
+      localStorage.setItem("busesData", JSON.stringify(busesData));
+      loadBuses();
+    }
+  }
 
-  window.deleteBus = async function (id) {
-    await deleteDoc(doc(db, "buses", id));
-    window.loadBuses();
-  };
+  function deleteBus(id) {
+    if (confirm("Delete this bus?")) {
+      busesData = busesData.filter(b => b.id !== id);
+      localStorage.setItem("busesData", JSON.stringify(busesData));
+      loadBuses();
+    }
+  }
 
-  window.loadRoutes = async function () {
-    const snap = await getDocs(collection(db, "routes"));
-    const tbody = document.querySelector("#routes-tab table tbody, #routes-table");
-    if (!tbody) return;
+  // ---------------------------
+  // Manage Routes
+  // ---------------------------
+  function loadRoutes() {
+    const tbody = document.querySelector("#routes-tab table tbody");
     tbody.innerHTML = "";
-    snap.forEach(d => {
-      const r = d.data();
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td>${d.id}</td>
-        <td>${r.from || ""}</td>
-        <td>${r.to || ""}</td>
-        <td>${r.distance || ""}</td>
-        <td>${r.duration || ""}</td>
-        <td>
-          <button onclick="editRoute('${d.id}')">Edit</button>
-          <button onclick="deleteRoute('${d.id}')">Delete</button>
-        </td>`;
-      tbody.appendChild(tr);
+    routesData.forEach(r => {
+      tbody.innerHTML += `
+        <tr>
+          <td>${r.id}</td>
+          <td>${r.from}</td>
+          <td>${r.to}</td>
+          <td>${r.distance}</td>
+          <td>${r.duration}</td>
+          <td>
+            <button onclick="editRoute('${r.id}')" class="btn-secondary">Edit</button>
+            <button onclick="deleteRoute('${r.id}')" class="btn-danger">Delete</button>
+          </td>
+        </tr>`;
     });
-  };
+  }
 
-  window.addNewRoute = async function () {
-    const from = prompt("From?");
-    const to = prompt("To?");
-    const distance = prompt("Distance?");
-    const duration = prompt("Duration?");
-    if (!from || !to) return;
-    await addDoc(collection(db, "routes"), { from, to, distance, duration });
-    window.loadRoutes();
-  };
+  function addNewRoute() {
+    const id = "RT" + String(Date.now()).slice(-4);
+    const from = prompt("From:");
+    const to = prompt("To:");
+    const distance = prompt("Distance:");
+    const duration = prompt("Duration:");
+    if (from && to && distance && duration) {
+      routesData.push({ id, from, to, distance, duration });
+      localStorage.setItem("routesData", JSON.stringify(routesData));
+      loadRoutes();
+    }
+  }
 
-  window.editRoute = async function (id) {
-    const duration = prompt("New duration?");
-    if (!duration) return;
-    await updateDoc(doc(db, "routes", id), { duration });
-    window.loadRoutes();
-  };
+  function editRoute(id) {
+    const route = routesData.find(r => r.id === id);
+    if (!route) return;
+    const from = prompt("Edit From:", route.from);
+    const to = prompt("Edit To:", route.to);
+    const distance = prompt("Edit Distance:", route.distance);
+    const duration = prompt("Edit Duration:", route.duration);
+    if (from && to && distance && duration) {
+      route.from = from;
+      route.to = to;
+      route.distance = distance;
+      route.duration = duration;
+      localStorage.setItem("routesData", JSON.stringify(routesData));
+      loadRoutes();
+    }
+  }
 
-  window.deleteRoute = async function (id) {
-    await deleteDoc(doc(db, "routes", id));
-    window.loadRoutes();
+  function deleteRoute(id) {
+    if (confirm("Delete this route?")) {
+      routesData = routesData.filter(r => r.id !== id);
+      localStorage.setItem("routesData", JSON.stringify(routesData));
+      loadRoutes();
+    }
+  }
+
+  // ---------------------------
+  // Bookings / Stats (unchanged from your version)
+  // ---------------------------
+  function loadAdminBookings() { /* keep your existing code */ }
+  function updateAdminStats() { /* keep your existing code */ }
+
+  // ---------------------------
+  // Init
+  // ---------------------------
+  window.onload = function () {
+    const stored = localStorage.getItem("adminLoggedIn");
+    isAdminLoggedIn = stored === "true";
+    document.getElementById("booking-section").classList.remove("hidden");
   };
 </script>
