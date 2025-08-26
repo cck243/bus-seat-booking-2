@@ -1,0 +1,901 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RedBus Clone - Bus Booking App</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        :root {
+            --primary: #d84e55;
+            --secondary: #363636;
+            --light: #f5f5f5;
+            --dark: #333;
+            --success: #28a745;
+            --danger: #dc3545;
+            --warning: #ffc107;
+            --info: #17a2b8;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #f8f9fa;
+            color: #333;
+        }
+        
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 15px;
+        }
+        
+        header {
+            background-color: var(--primary);
+            color: white;
+            padding: 15px 0;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+        }
+        
+        nav ul {
+            display: flex;
+            list-style: none;
+        }
+        
+        nav ul li {
+            margin-left: 20px;
+        }
+        
+        nav ul li a {
+            color: white;
+            text-decoration: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+        
+        nav ul li a:hover {
+            background-color: rgba(255,255,255,0.2);
+        }
+        
+        .main-content {
+            padding: 30px 0;
+        }
+        
+        .section {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        
+        h2 {
+            color: var(--secondary);
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+        
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        
+        button:hover {
+            background-color: #c23c43;
+        }
+        
+        .btn-secondary {
+            background-color: var(--secondary);
+        }
+        
+        .btn-secondary:hover {
+            background-color: #2a2a2a;
+        }
+        
+        .btn-success {
+            background-color: var(--success);
+        }
+        
+        .btn-success:hover {
+            background-color: #218838;
+        }
+        
+        .bus-layout {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+            margin: 20px 0;
+        }
+        
+        .seat {
+            background-color: #e9ecef;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            padding: 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .seat.selected {
+            background-color: var(--success);
+            color: white;
+        }
+        
+        .seat.occupied {
+            background-color: #6c757d;
+            color: white;
+            cursor: not-allowed;
+        }
+        
+        .seat.vip {
+            background-color: #ffc107;
+            color: var(--dark);
+        }
+        
+        .driver-seat {
+            grid-column: 3;
+            background-color: #343a40;
+            color: white;
+            text-align: center;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+        
+        .booking-details {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+        }
+        
+        .ticket {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            background: white;
+            margin-bottom: 20px;
+        }
+        
+        .ticket-header {
+            text-align: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px dashed #ddd;
+        }
+        
+        .ticket-details {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        
+        .ticket-qr {
+            text-align: center;
+            margin-top: 15px;
+            padding: 10px;
+            border-top: 1px dashed #ddd;
+        }
+        
+        .admin-panel {
+            display: none;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        
+        table th, table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        table th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+        }
+        
+        .tab-container {
+            margin-top: 20px;
+        }
+        
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid #ddd;
+            margin-bottom: 20px;
+        }
+        
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+        }
+        
+        .tab.active {
+            border-bottom: 3px solid var(--primary);
+            font-weight: 600;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .login-form {
+            max-width: 400px;
+            margin: 0 auto;
+        }
+        
+        .user-booking {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        
+        @media (max-width: 768px) {
+            .bus-layout {
+                grid-template-columns: repeat(4, 1fr);
+            }
+            
+            .header-content {
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            nav ul {
+                margin-top: 15px;
+                justify-content: center;
+            }
+            
+            nav ul li {
+                margin: 0 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container header-content">
+            <div class="logo">RedBus Clone</div>
+            <nav>
+                <ul>
+                    <li><a href="#" onclick="showSection('booking')">Book Bus</a></li>
+                    <li><a href="#" onclick="showSection('myBookings')">My Bookings</a></li>
+                    <li><a href="#" onclick="showAdminPanel()">Admin</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <div class="container main-content">
+        <!-- Booking Section -->
+        <div id="booking-section" class="section">
+            <h2>Book Your Bus Ticket</h2>
+            
+            <div class="form-group">
+                <label for="from-city">From</label>
+                <select id="from-city">
+                    <option value="">Select City</option>
+                    <option value="new-york">New York</option>
+                    <option value="los-angeles">Los Angeles</option>
+                    <option value="chicago">Chicago</option>
+                    <option value="houston">Houston</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="to-city">To</label>
+                <select id="to-city">
+                    <option value="">Select City</option>
+                    <option value="new-york">New York</option>
+                    <option value="los-angeles">Los Angeles</option>
+                    <option value="chicago">Chicago</option>
+                    <option value="houston">Houston</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="travel-date">Travel Date</label>
+                <input type="date" id="travel-date">
+            </div>
+            
+            <button onclick="searchBuses()">Search Buses</button>
+            
+            <div id="bus-results" class="hidden">
+                <h3>Available Buses</h3>
+                <div class="bus-option" onclick="selectBus('bus1')">
+                    <h4>Express Bus 1</h4>
+                    <p>Departure: 08:00 AM | Arrival: 02:00 PM</p>
+                    <p>Fare: $50</p>
+                </div>
+                <div class="bus-option" onclick="selectBus('bus2')">
+                    <h4>Luxury Bus 2</h4>
+                    <p>Departure: 10:00 AM | Arrival: 04:00 PM</p>
+                    <p>Fare: $70</p>
+                </div>
+            </div>
+            
+            <div id="seat-selection" class="hidden">
+                <h3>Select Your Seats</h3>
+                <div class="driver-seat">Driver</div>
+                <div class="bus-layout" id="bus-seats">
+                    <!-- Seats will be generated here -->
+                </div>
+                
+                <div class="form-group">
+                    <label for="passenger-name">Passenger Name</label>
+                    <input type="text" id="passenger-name">
+                </div>
+                
+                <div class="form-group">
+                    <label for="passenger-age">Passenger Age</label>
+                    <input type="number" id="passenger-age">
+                </div>
+                
+                <div class="form-group">
+                    <label for="passenger-gender">Gender</label>
+                    <select id="passenger-gender">
+                        <option value="male">Male</option>
+                        <option value="female">Female</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                
+                <button onclick="confirmBooking()">Confirm Booking</button>
+            </div>
+            
+            <div id="booking-confirmation" class="hidden">
+                <h3>Booking Confirmed!</h3>
+                <div id="ticket-display">
+                    <!-- Ticket will be displayed here -->
+                </div>
+                <button onclick="downloadTicket()" class="btn-success">Download Ticket as PDF</button>
+            </div>
+        </div>
+
+        <!-- My Bookings Section -->
+        <div id="my-bookings-section" class="section hidden">
+            <h2>My Bookings</h2>
+            <div id="user-bookings">
+                <!-- User bookings will be displayed here -->
+            </div>
+        </div>
+
+        <!-- Admin Panel -->
+        <div id="admin-panel" class="section admin-panel hidden">
+            <h2>Admin Panel</h2>
+            
+            <div class="tabs">
+                <div class="tab active" onclick="switchTab('bookings-tab')">All Bookings</div>
+                <div class="tab" onclick="switchTab('buses-tab')">Manage Buses</div>
+                <div class="tab" onclick="switchTab('routes-tab')">Manage Routes</div>
+            </div>
+            
+            <div id="bookings-tab" class="tab-content active">
+                <h3>All Bookings</h3>
+                <table id="admin-bookings-table">
+                    <thead>
+                        <tr>
+                            <th>Booking ID</th>
+                            <th>Passenger</th>
+                            <th>Route</th>
+                            <th>Date</th>
+                            <th>Seats</th>
+                            <th>Fare</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Bookings will be populated here -->
+                    </tbody>
+                </table>
+            </div>
+            
+            <div id="buses-tab" class="tab-content">
+                <h3>Manage Buses</h3>
+                <button onclick="addNewBus()">Add New Bus</button>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Bus ID</th>
+                            <th>Bus Name</th>
+                            <th>Capacity</th>
+                            <th>Type</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>BUS001</td>
+                            <td>Express Bus 1</td>
+                            <td>40</td>
+                            <td>AC</td>
+                            <td>
+                                <button class="btn-secondary">Edit</button>
+                                <button class="btn-danger">Delete</button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>BUS002</td>
+                            <td>Luxury Bus 2</td>
+                            <td>35</td>
+                            <td>Non-AC</td>
+                            <td>
+                                <button class="btn-secondary">Edit</button>
+                                <button class="btn-danger">Delete</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <div id="routes-tab" class="tab-content">
+                <h3>Manage Routes</h3>
+                <button onclick="addNewRoute()">Add New Route</button>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Route ID</th>
+                            <th>From</th>
+                            <th>To</th>
+                            <th>Distance</th>
+                            <th>Duration</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>RT001</td>
+                            <td>New York</td>
+                            <td>Boston</td>
+                            <td>215 miles</td>
+                            <td>4 hours</td>
+                            <td>
+                                <button class="btn-secondary">Edit</button>
+                                <button class="btn-danger">Delete</button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>RT002</td>
+                            <td>Los Angeles</td>
+                            <td>San Francisco</td>
+                            <td>380 miles</td>
+                            <td>6 hours</td>
+                            <td>
+                                <button class="btn-secondary">Edit</button>
+                                <button class="btn-danger">Delete</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Admin Login -->
+        <div id="admin-login" class="section hidden">
+            <h2>Admin Login</h2>
+            <div class="login-form">
+                <div class="form-group">
+                    <label for="admin-username">Username</label>
+                    <input type="text" id="admin-username">
+                </div>
+                <div class="form-group">
+                    <label for="admin-password">Password</label>
+                    <input type="password" id="admin-password">
+                </div>
+                <button onclick="adminLogin()">Login</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize the jsPDF object
+        const { jsPDF } = window.jspdf;
+        
+        // Sample data
+        const buses = {
+            'bus1': {
+                name: 'Express Bus 1',
+                departure: '08:00 AM',
+                arrival: '02:00 PM',
+                fare: 50,
+                seats: generateSeats(40)
+            },
+            'bus2': {
+                name: 'Luxury Bus 2',
+                departure: '10:00 AM',
+                arrival: '04:00 PM',
+                fare: 70,
+                seats: generateSeats(35)
+            }
+        };
+        
+        let selectedBus = null;
+        let selectedSeats = [];
+        let bookings = JSON.parse(localStorage.getItem('bookings')) || [];
+        let currentBooking = null;
+        
+        // Generate seat data
+        function generateSeats(count) {
+            const seats = [];
+            for (let i = 1; i <= count; i++) {
+                seats.push({
+                    number: i,
+                    occupied: Math.random() > 0.7, // 30% chance of being occupied
+                    vip: i <= 5 // First 5 seats are VIP
+                });
+            }
+            return seats;
+        }
+        
+        // Show specific section
+        function showSection(section) {
+            document.getElementById('booking-section').classList.add('hidden');
+            document.getElementById('my-bookings-section').classList.add('hidden');
+            document.getElementById('admin-panel').classList.add('hidden');
+            document.getElementById('admin-login').classList.add('hidden');
+            
+            if (section === 'booking') {
+                document.getElementById('booking-section').classList.remove('hidden');
+            } else if (section === 'myBookings') {
+                document.getElementById('my-bookings-section').classList.remove('hidden');
+                loadUserBookings();
+            }
+        }
+        
+        // Show admin panel or login
+        function showAdminPanel() {
+            const isAdminLoggedIn = localStorage.getItem('adminLoggedIn') === 'true';
+            
+            if (isAdminLoggedIn) {
+                document.getElementById('booking-section').classList.add('hidden');
+                document.getElementById('my-bookings-section').classList.add('hidden');
+                document.getElementById('admin-panel').classList.remove('hidden');
+                document.getElementById('admin-login').classList.add('hidden');
+                loadAdminBookings();
+            } else {
+                document.getElementById('booking-section').classList.add('hidden');
+                document.getElementById('my-bookings-section').classList.add('hidden');
+                document.getElementById('admin-panel').classList.add('hidden');
+                document.getElementById('admin-login').classList.remove('hidden');
+            }
+        }
+        
+        // Admin login function
+        function adminLogin() {
+            const username = document.getElementById('admin-username').value;
+            const password = document.getElementById('admin-password').value;
+            
+            // Simple authentication (in real app, this would be server-side)
+            if (username === 'admin' && password === 'admin123') {
+                localStorage.setItem('adminLoggedIn', 'true');
+                showAdminPanel();
+            } else {
+                alert('Invalid admin credentials');
+            }
+        }
+        
+        // Search buses
+        function searchBuses() {
+            const from = document.getElementById('from-city').value;
+            const to = document.getElementById('to-city').value;
+            const date = document.getElementById('travel-date').value;
+            
+            if (!from || !to || !date) {
+                alert('Please fill all fields');
+                return;
+            }
+            
+            document.getElementById('bus-results').classList.remove('hidden');
+        }
+        
+        // Select a bus
+        function selectBus(busId) {
+            selectedBus = buses[busId];
+            document.getElementById('bus-results').classList.add('hidden');
+            document.getElementById('seat-selection').classList.remove('hidden');
+            
+            // Generate seat layout
+            const busSeatsContainer = document.getElementById('bus-seats');
+            busSeatsContainer.innerHTML = '';
+            
+            selectedBus.seats.forEach(seat => {
+                const seatElement = document.createElement('div');
+                seatElement.className = 'seat';
+                if (seat.vip) seatElement.classList.add('vip');
+                if (seat.occupied) seatElement.classList.add('occupied');
+                seatElement.textContent = seat.number;
+                seatElement.onclick = () => toggleSeat(seat, seatElement);
+                busSeatsContainer.appendChild(seatElement);
+            });
+        }
+        
+        // Toggle seat selection
+        function toggleSeat(seat, element) {
+            if (seat.occupied) return;
+            
+            const index = selectedSeats.findIndex(s => s.number === seat.number);
+            
+            if (index === -1) {
+                selectedSeats.push(seat);
+                element.classList.add('selected');
+            } else {
+                selectedSeats.splice(index, 1);
+                element.classList.remove('selected');
+            }
+        }
+        
+        // Confirm booking
+        function confirmBooking() {
+            const passengerName = document.getElementById('passenger-name').value;
+            const passengerAge = document.getElementById('passenger-age').value;
+            const passengerGender = document.getElementById('passenger-gender').value;
+            
+            if (!passengerName || !passengerAge || selectedSeats.length === 0) {
+                alert('Please fill all fields and select at least one seat');
+                return;
+            }
+            
+            // Create booking object
+            const booking = {
+                id: 'B' + Date.now(),
+                passenger: {
+                    name: passengerName,
+                    age: passengerAge,
+                    gender: passengerGender
+                },
+                bus: selectedBus,
+                from: document.getElementById('from-city').value,
+                to: document.getElementById('to-city').value,
+                date: document.getElementById('travel-date').value,
+                seats: selectedSeats.map(s => s.number),
+                fare: selectedBus.fare * selectedSeats.length,
+                bookingDate: new Date().toLocaleString()
+            };
+            
+            // Save booking
+            bookings.push(booking);
+            localStorage.setItem('bookings', JSON.stringify(bookings));
+            
+            currentBooking = booking;
+            
+            // Show confirmation
+            document.getElementById('seat-selection').classList.add('hidden');
+            document.getElementById('booking-confirmation').classList.remove('hidden');
+            
+            // Display ticket
+            displayTicket(booking);
+        }
+        
+        // Display ticket
+        function displayTicket(booking) {
+            const ticketDisplay = document.getElementById('ticket-display');
+            
+            ticketDisplay.innerHTML = `
+                <div class="ticket">
+                    <div class="ticket-header">
+                        <h3>Bus Ticket</h3>
+                        <p>Booking ID: ${booking.id}</p>
+                    </div>
+                    <div class="ticket-details">
+                        <div>
+                            <p><strong>Passenger:</strong> ${booking.passenger.name}</p>
+                            <p><strong>Age:</strong> ${booking.passenger.age}</p>
+                            <p><strong>Gender:</strong> ${booking.passenger.gender}</p>
+                        </div>
+                        <div>
+                            <p><strong>From:</strong> ${booking.from}</p>
+                            <p><strong>To:</strong> ${booking.to}</p>
+                            <p><strong>Date:</strong> ${booking.date}</p>
+                        </div>
+                    </div>
+                    <div class="ticket-details">
+                        <div>
+                            <p><strong>Bus:</strong> ${booking.bus.name}</p>
+                            <p><strong>Departure:</strong> ${booking.bus.departure}</p>
+                            <p><strong>Arrival:</strong> ${booking.bus.arrival}</p>
+                        </div>
+                        <div>
+                            <p><strong>Seats:</strong> ${booking.seats.join(', ')}</p>
+                            <p><strong>Fare:</strong> $${booking.fare}</p>
+                            <p><strong>Booking Date:</strong> ${booking.bookingDate}</p>
+                        </div>
+                    </div>
+                    <div class="ticket-qr">
+                        <p>Scan this QR code at the bus</p>
+                        <div id="qrcode-${booking.id}"></div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Download ticket as PDF
+        function downloadTicket() {
+            const ticketElement = document.getElementById('ticket-display');
+            
+            html2canvas(ticketElement).then(canvas => {
+                const imgData = canvas.toDataURL('image/png');
+                const pdf = new jsPDF();
+                const imgProps = pdf.getImageProperties(imgData);
+                const pdfWidth = pdf.internal.pageSize.getWidth();
+                const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+                
+                pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+                pdf.save(`bus-ticket-${currentBooking.id}.pdf`);
+            });
+        }
+        
+        // Load user bookings
+        function loadUserBookings() {
+            const userBookingsContainer = document.getElementById('user-bookings');
+            userBookingsContainer.innerHTML = '';
+            
+            if (bookings.length === 0) {
+                userBookingsContainer.innerHTML = '<p>No bookings found.</p>';
+                return;
+            }
+            
+            bookings.forEach(booking => {
+                const bookingElement = document.createElement('div');
+                bookingElement.className = 'user-booking';
+                bookingElement.innerHTML = `
+                    <h4>Booking ID: ${booking.id}</h4>
+                    <p><strong>Route:</strong> ${booking.from} to ${booking.to}</p>
+                    <p><strong>Date:</strong> ${booking.date}</p>
+                    <p><strong>Seats:</strong> ${booking.seats.join(', ')}</p>
+                    <p><strong>Fare:</strong> $${booking.fare}</p>
+                    <button onclick="viewTicket('${booking.id}')">View Ticket</button>
+                    <button onclick="downloadUserTicket('${booking.id}')">Download PDF</button>
+                `;
+                userBookingsContainer.appendChild(bookingElement);
+            });
+        }
+        
+        // View ticket
+        function viewTicket(bookingId) {
+            const booking = bookings.find(b => b.id === bookingId);
+            if (booking) {
+                document.getElementById('my-bookings-section').classList.add('hidden');
+                document.getElementById('booking-confirmation').classList.remove('hidden');
+                displayTicket(booking);
+            }
+        }
+        
+        // Download user ticket
+        function downloadUserTicket(bookingId) {
+            const booking = bookings.find(b => b.id === bookingId);
+            if (booking) {
+                currentBooking = booking;
+                downloadTicket();
+            }
+        }
+        
+        // Load admin bookings
+        function loadAdminBookings() {
+            const adminBookingsTable = document.getElementById('admin-bookings-table').querySelector('tbody');
+            adminBookingsTable.innerHTML = '';
+            
+            bookings.forEach(booking => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${booking.id}</td>
+                    <td>${booking.passenger.name}</td>
+                    <td>${booking.from} to ${booking.to}</td>
+                    <td>${booking.date}</td>
+                    <td>${booking.seats.join(', ')}</td>
+                    <td>$${booking.fare}</td>
+                    <td>Confirmed</td>
+                    <td>
+                        <button onclick="viewBooking('${booking.id}')">View</button>
+                        <button class="btn-danger" onclick="cancelBooking('${booking.id}')">Cancel</button>
+                    </td>
+                `;
+                adminBookingsTable.appendChild(row);
+            });
+        }
+        
+        // View booking in admin panel
+        function viewBooking(bookingId) {
+            const booking = bookings.find(b => b.id === bookingId);
+            if (booking) {
+                alert(`Booking Details:\nID: ${booking.id}\nPassenger: ${booking.passenger.name}\nRoute: ${booking.from} to ${booking.to}\nDate: ${booking.date}\nSeats: ${booking.seats.join(', ')}\nFare: $${booking.fare}`);
+            }
+        }
+        
+        // Cancel booking
+        function cancelBooking(bookingId) {
+            if (confirm('Are you sure you want to cancel this booking?')) {
+                bookings = bookings.filter(b => b.id !== bookingId);
+                localStorage.setItem('bookings', JSON.stringify(bookings));
+                loadAdminBookings();
+            }
+        }
+        
+        // Switch tabs in admin panel
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            document.getElementById(tabId).classList.add('active');
+            event.currentTarget.classList.add('active');
+        }
+        
+        // Add new bus (placeholder)
+        function addNewBus() {
+            alert('Add new bus functionality would be implemented here');
+        }
+        
+        // Add new route (placeholder)
+        function addNewRoute() {
+            alert('Add new route functionality would be implemented here');
+        }
+        
+        // Initialize the application
+        window.onload = function() {
+            showSection('booking');
+        };
+    </script>
+</body>
+</html>
