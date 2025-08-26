@@ -525,7 +525,7 @@
         </div>
 
         <!-- Admin Panel -->
-        <div id="admin-panel" class="section admin-panel hidden">
+        <div id="admin-panel" class="section admin-panel">
             <h2>Admin Panel</h2>
             
             <div class="admin-stats">
@@ -1073,19 +1073,12 @@
             tomorrow.setDate(tomorrow.getDate() + 1);
             document.getElementById('travel-date').valueAsDate = tomorrow;
             
-            // Check if admin is logged in
-            const isAdminLoggedIn = localStorage.getItem('adminLoggedIn') === 'true';
-            if (isAdminLoggedIn) {
-                // If admin is logged in, show admin panel directly
-                document.getElementById('admin-login').classList.add('hidden');
-                document.getElementById('admin-panel').classList.remove('hidden');
-                loadAdminBookings();
-                updateAdminStats();
-            } else {
-                // Otherwise, show the booking section
-                document.getElementById('admin-login').classList.remove('hidden');
-                document.getElementById('booking-section').classList.remove('hidden');
-            }
+            // Initialize admin panel and login to hidden state
+            document.getElementById('admin-panel').classList.add('hidden');
+            document.getElementById('admin-login').classList.add('hidden');
+            
+            // Show booking section by default
+            document.getElementById('booking-section').classList.remove('hidden');
         };
     </script>
 </body>
