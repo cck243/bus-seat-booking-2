@@ -525,7 +525,7 @@
         </div>
 
         <!-- Admin Panel -->
-        <div id="admin-panel" class="section admin-panel">
+        <div id="admin-panel" class="section hidden">
             <h2>Admin Panel</h2>
             
             <div class="admin-stats">
@@ -753,6 +753,11 @@
         function adminLogin() {
             const username = document.getElementById('admin-username').value;
             const password = document.getElementById('admin-password').value;
+            
+            if (!username || !password) {
+                alert('Please enter both username and password');
+                return;
+            }
             
             // Simple authentication
             if (username === 'admin' && password === 'admin123') {
@@ -1073,12 +1078,21 @@
             tomorrow.setDate(tomorrow.getDate() + 1);
             document.getElementById('travel-date').valueAsDate = tomorrow;
             
-            // Initialize admin panel and login to hidden state
+            // Initialize all sections to hidden state
+            document.getElementById('booking-section').classList.add('hidden');
+            document.getElementById('my-bookings-section').classList.add('hidden');
             document.getElementById('admin-panel').classList.add('hidden');
             document.getElementById('admin-login').classList.add('hidden');
             
             // Show booking section by default
             document.getElementById('booking-section').classList.remove('hidden');
+            
+            // Check if admin is logged in
+            const isAdminLoggedIn = localStorage.getItem('adminLoggedIn') === 'true';
+            if (isAdminLoggedIn) {
+                // If admin is logged in, set the flag
+                console.log('Admin is logged in');
+            }
         };
     </script>
 </body>
